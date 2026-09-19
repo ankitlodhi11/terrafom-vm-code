@@ -16,8 +16,6 @@ module "nic_association" {
   nics   = var.nics
   depends_on = [module.vnet]
 }
-
-
 # module "kv_secret" {
 #   source = "../../modules/Key_vault_secert"
 #   kvs    = var.kvs
