@@ -1,3 +1,61 @@
+# trigger:
+# - main
+
+# pool:
+#   name: dhurander
+
+# stages:
+
+# - stage: TerraformPlan
+#   displayName: 'Terraform Init Validate Plan'
+
+#   jobs:
+#   - job: Terraform
+#     displayName: 'Terraform'
+
+#     steps:
+
+#     # Terraform Install
+#     - task: TerraformInstaller@1
+#       displayName: 'Install Terraform 1.13.4'
+#       inputs:
+#         terraformVersion: '1.13.4'
+
+#     # Verify Terraform
+#     - powershell: |
+#         terraform version
+#         where.exe terraform
+#       displayName: 'Verify Terraform'
+
+#     # INIT
+#     - task: TerraformTask@5
+#       displayName: 'Terraform Init'
+#       inputs:
+#         provider: 'azurerm'
+#         command: 'init'
+#         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+#         backendServiceArm: 'data'
+#         backendAzureRmResourceGroupName: 'rg-statefile'
+#         backendAzureRmStorageAccountName: 'stagefile123321'
+#         backendAzureRmContainerName: 'tfstate'
+#         backendAzureRmKey: 'dev.terraform.tfstate'
+
+#     # VALIDATE
+#     - task: TerraformTask@5
+#       displayName: 'Terraform Validate'
+#       inputs:
+#         provider: 'azurerm'
+#         command: 'validate'
+#         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+
+#     # PLAN
+#     - task: TerraformTask@5
+#       displayName: 'Terraform Plan'
+#       inputs:
+#         provider: 'azurerm'
+#         command: 'plan'
+#         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+#         environmentServiceNameAzureRM: 'data'
 trigger:
 - main
 
@@ -6,28 +64,28 @@ pool:
 
 stages:
 
+# =========================
+# PLAN
+# =========================
 - stage: TerraformPlan
   displayName: 'Terraform Init Validate Plan'
 
   jobs:
-  - job: Terraform
-    displayName: 'Terraform'
+  - job: TerraformPlanJob
+    displayName: 'Terraform Plan'
 
     steps:
 
-    # Terraform Install
     - task: TerraformInstaller@1
       displayName: 'Install Terraform 1.13.4'
       inputs:
         terraformVersion: '1.13.4'
 
-    # Verify Terraform
     - powershell: |
         terraform version
         where.exe terraform
       displayName: 'Verify Terraform'
 
-    # INIT
     - task: TerraformTask@5
       displayName: 'Terraform Init'
       inputs:
@@ -40,7 +98,6 @@ stages:
         backendAzureRmContainerName: 'tfstate'
         backendAzureRmKey: 'dev.terraform.tfstate'
 
-    # VALIDATE
     - task: TerraformTask@5
       displayName: 'Terraform Validate'
       inputs:
@@ -48,7 +105,6 @@ stages:
         command: 'validate'
         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
 
-    # PLAN
     - task: TerraformTask@5
       displayName: 'Terraform Plan'
       inputs:
@@ -56,3 +112,72 @@ stages:
         command: 'plan'
         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
         environmentServiceNameAzureRM: 'data'
+
+
+# =========================
+# MANUAL APPROVAL
+# =========================
+- stage: Approval
+  displayName: 'Manual Approval'
+  dependsOn: TerraformPlan
+  condition: succeeded()
+
+  jobs:
+  - deployment: ManualApproval
+    displayName: 'Wait for Approval'
+
+    environment: 'terraform-production'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              echo "Terraform deployment approved."
+            displayName: 'Approval Received'
+
+
+# =========================
+# APPLY
+# =========================
+- stage: TerraformApply
+  displayName: 'Terraform Apply'
+  dependsOn: Approval
+  condition: succeeded()
+
+  jobs:
+  - job: TerraformApplyJob
+    displayName: 'Terraform Apply'
+
+    steps:
+
+    - task: TerraformInstaller@1
+      displayName: 'Install Terraform 1.13.4'
+      inputs:
+        terraformVersion: '1.13.4'
+
+    - powershell: |
+        terraform version
+        where.exe terraform
+      displayName: 'Verify Terraform'
+
+    - task: TerraformTask@5
+      displayName: 'Terraform Init'
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        backendServiceArm: 'data'
+        backendAzureRmResourceGroupName: 'rg-statefile'
+        backendAzureRmStorageAccountName: 'stagefile123321'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'dev.terraform.tfstate'
+
+    - task: TerraformTask@5
+      displayName: 'Terraform Apply'
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        environmentServiceNameAzureRM: 'data'
+        commandOptions: '-auto-approve'
