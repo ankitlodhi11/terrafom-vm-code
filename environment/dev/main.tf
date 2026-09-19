@@ -1,15 +1,12 @@
 module "rgs" {
   source = "../../modules/Resource_Group"
   rgs    = var.rgs
-
 }
-
 module "nsg" {
   source = "../../modules/network_security_group"
   nsg    = var.nsg
   depends_on = [module.rgs,module.public_ip,module.nic_association,module.vnet]
 }
-
 module "public_ip" {
   source     = "../../modules/Public_IP"
   public_ips = var.public_ips
