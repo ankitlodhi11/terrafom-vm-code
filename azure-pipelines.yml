@@ -6,25 +6,28 @@ pool:
 
 stages:
 
-- stage: init
-  displayName: 'Terraforminit'
-  jobs:
+- stage: TerraformPlan
+  displayName: 'Terraform Init Validate Plan'
 
+  jobs:
   - job: Terraform
-    displayName: 'Terraform Init Plan'
+    displayName: 'Terraform'
 
     steps:
 
+    # Terraform Install
     - task: TerraformInstaller@1
       displayName: 'Install Terraform 1.13.4'
       inputs:
         terraformVersion: '1.13.4'
 
+    # Verify Terraform
     - powershell: |
         terraform version
         where.exe terraform
       displayName: 'Verify Terraform'
 
+    # INIT
     - task: TerraformTask@5
       displayName: 'Terraform Init'
       inputs:
@@ -36,28 +39,16 @@ stages:
         backendAzureRmStorageAccountName: 'stagefile123321'
         backendAzureRmContainerName: 'tfstate'
         backendAzureRmKey: 'dev.terraform.tfstate'
-- stage: validate
-  displayName: 'Validate'
-  jobs:
 
-  - job: Terraform
-    displayName: 'Terraform Init Plan'
-
-    steps:
+    # VALIDATE
     - task: TerraformTask@5
       displayName: 'Terraform Validate'
       inputs:
         provider: 'azurerm'
         command: 'validate'
         workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
-- stage: Terraform
-  displayName: 'Plan'
-  jobs:
 
-  - job: Terraform
-    displayName: 'Terraform Init Plan'
-
-    steps:
+    # PLAN
     - task: TerraformTask@5
       displayName: 'Terraform Plan'
       inputs:
