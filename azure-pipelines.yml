@@ -1,0 +1,36 @@
+trigger:
+- main
+
+pool: 
+ name: dhurander
+stages:
+  - stage:
+    displayName: terraform init
+    jobs:
+      - job: 
+        steps:
+        - task: TerraformInstaller@1
+          displayName: 'Install Terraform 1.13.4'
+          inputs:
+            terraformVersion: 'latest'
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+            backendServiceArm: 'data'
+            backendAzureRmResourceGroupName: 'rg-statefile'
+            backendAzureRmStorageAccountName: 'stagefile123321'
+            backendAzureRmContainerName: 'tfstate'
+            backendAzureRmKey: 'dev.terraform'
+  - stage:
+    displayName: terraform plan
+    jobs:
+      - job: 
+        steps:
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'plan'
+            workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+            environmentServiceNameAzureRM: 'data'
